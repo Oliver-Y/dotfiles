@@ -1,0 +1,22 @@
+# Theme
+theme = TokyoNight Night
+
+# Font
+font-size = 14
+font-family = MesloLGS NF
+
+# Window
+window-padding-x = 8
+window-padding-y = 4
+window-decoration = true
+# macOS only — ignored on Linux
+macos-titlebar-style = tabs
+
+# Terminal behavior
+copy-on-select = clipboard
+mouse-scroll-multiplier = 3
+scrollback-limit = 50000
+
+# Cursor
+cursor-style = block
+cursor-style-blink = false
