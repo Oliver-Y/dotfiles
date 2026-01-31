@@ -148,6 +148,10 @@ link_file "$DOTFILES/tmux/.tmux.conf" "$HOME/.tmux.conf"
 mkdir -p "$HOME/.config/ghostty"
 link_file "$DOTFILES/ghostty/config" "$HOME/.config/ghostty/config"
 
+mkdir -p "$HOME/.claude"
+link_file "$DOTFILES/claude/settings.json" "$HOME/.claude/settings.json"
+link_file "$DOTFILES/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
+
 # --- Install tmux plugins ---
 echo "==> Installing tmux plugins via TPM..."
 "$HOME/.tmux/plugins/tpm/bin/install_plugins" || true
