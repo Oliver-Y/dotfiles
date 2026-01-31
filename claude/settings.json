@@ -9,8 +9,9 @@
       "Bash(tmux:*)"
     ]
   },
+  "model": "opus",
   "statusLine": {
     "type": "command",
-    "command": "~/.claude/statusline.sh"
+    "command": "/Users/OliverY/.claude/statusline.sh"
   }
 }

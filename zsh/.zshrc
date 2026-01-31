@@ -136,6 +136,6 @@ eval "$(zoxide init zsh)"
 # To customize prompt, run `p10k configure` or edit ~/.p10k.zsh.
 [[ ! -f ~/.p10k.zsh ]] || source ~/.p10k.zsh
 
-alias gs='git status' 
+alias gs='git status'
 alias gco='git checkout'
 export PATH="$HOME/.local/bin:$PATH"
