@@ -8,5 +8,9 @@
       "Bash(npx:*)",
       "Bash(tmux:*)"
     ]
+  },
+  "statusLine": {
+    "type": "command",
+    "command": "~/.claude/statusline.sh"
   }
 }
