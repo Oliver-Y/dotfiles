@@ -48,7 +48,7 @@ fi
 
 # --- Core packages ---
 echo "==> Installing core packages..."
-PACKAGES=(bash zsh tmux fzf zoxide git curl jq)
+PACKAGES=(bash zsh tmux fzf zoxide git curl jq yazi fd ripgrep)
 for pkg in "${PACKAGES[@]}"; do
   if ! command -v "$pkg" &>/dev/null; then
     echo "    Installing $pkg..."
@@ -57,6 +57,29 @@ for pkg in "${PACKAGES[@]}"; do
     echo "    $pkg already installed"
   fi
 done
+
+# Yazi dependencies (macOS only)
+if [[ "$OS" == "Darwin" ]]; then
+  echo "==> Installing yazi dependencies..."
+  YAZI_DEPS=(ffmpegthumbnailer sevenzip poppler imagemagick font-symbols-only-nerd-font)
+  for dep in "${YAZI_DEPS[@]}"; do
+    if [[ "$dep" == font-* ]]; then
+      if ! ls ~/Library/Fonts/SymbolsNerdFont* &>/dev/null 2>&1; then
+        echo "    Installing $dep..."
+        install_cask "$dep"
+      else
+        echo "    $dep already installed"
+      fi
+    else
+      if ! command -v "$dep" &>/dev/null && ! brew list "$dep" &>/dev/null 2>&1; then
+        echo "    Installing $dep..."
+        install_pkg "$dep"
+      else
+        echo "    $dep already installed"
+      fi
+    fi
+  done
+fi
 
 # Re-exec under modern bash if we just installed it (needed for declare -A below)
 if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
@@ -172,6 +195,9 @@ mkdir -p "$HOME/.claude"
 link_file "$DOTFILES/claude/settings.json" "$HOME/.claude/settings.json"
 link_file "$DOTFILES/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 link_file "$DOTFILES/claude/statusline.sh" "$HOME/.claude/statusline.sh"
+
+mkdir -p "$HOME/.config/yazi"
+link_file "$DOTFILES/yazi/keymap.toml" "$HOME/.config/yazi/keymap.toml"
 
 # --- Install tmux plugins ---
 echo "==> Installing tmux plugins via TPM..."

@@ -1,0 +1,14 @@
+[manager]
+prepend_keymap = [
+  # Open file/folder in default app (Enter key)
+  { on = [ "<Enter>" ], run = "open", desc = "Open with default app" },
+
+  # Open in new tmux pane with horizontal split
+  { on = [ "g", "h" ], run = 'shell tmux split-window -h -c "$PWD" --silent', desc = "Open in horizontal tmux pane" },
+
+  # Open in new tmux pane with vertical split
+  { on = [ "g", "v" ], run = 'shell tmux split-window -v -c "$PWD" --silent', desc = "Open in vertical tmux pane" },
+
+  # Open in new tmux window
+  { on = [ "g", "t" ], run = 'shell tmux new-window -c "$PWD" --silent', desc = "Open in new tmux window" },
+]

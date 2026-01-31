@@ -139,3 +139,13 @@ eval "$(zoxide init zsh)"
 alias gs='git status'
 alias gco='git checkout'
 export PATH="$HOME/.local/bin:$PATH"
+
+# Yazi wrapper - cd to last directory on exit
+function yy() {
+  local tmp="$(mktemp -t "yazi-cwd.XXXXX")"
+  yazi "$@" --cwd-file="$tmp"
+  if cwd="$(cat -- "$tmp")" && [ -n "$cwd" ] && [ "$cwd" != "$PWD" ]; then
+    cd -- "$cwd"
+  fi
+  rm -f -- "$tmp"
+}
