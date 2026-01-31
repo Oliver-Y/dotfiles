@@ -1,6 +1,14 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# macOS ships bash 3.2 — if we installed bash 4+ via Homebrew, re-exec with it
+if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
+  NEW_BASH="/opt/homebrew/bin/bash"
+  if [[ -x "$NEW_BASH" ]]; then
+    exec "$NEW_BASH" "$0" "$@"
+  fi
+fi
+
 DOTFILES="$(cd "$(dirname "$0")" && pwd)"
 
 # --- Detect OS and package manager ---
@@ -40,7 +48,7 @@ fi
 
 # --- Core packages ---
 echo "==> Installing core packages..."
-PACKAGES=(zsh tmux fzf zoxide git curl)
+PACKAGES=(bash zsh tmux fzf zoxide git curl jq)
 for pkg in "${PACKAGES[@]}"; do
   if ! command -v "$pkg" &>/dev/null; then
     echo "    Installing $pkg..."
@@ -49,6 +57,18 @@ for pkg in "${PACKAGES[@]}"; do
     echo "    $pkg already installed"
   fi
 done
+
+# Re-exec under modern bash if we just installed it (needed for declare -A below)
+if [[ "${BASH_VERSINFO[0]}" -lt 4 ]]; then
+  NEW_BASH="/opt/homebrew/bin/bash"
+  if [[ -x "$NEW_BASH" ]]; then
+    echo "    Re-running script with bash ${NEW_BASH}..."
+    exec "$NEW_BASH" "$0" "$@"
+  else
+    echo "WARNING: bash 4+ required for associative arrays but not found."
+    echo "         Some zsh plugins may not be installed automatically."
+  fi
+fi
 
 # --- Ghostty ---
 echo "==> Installing Ghostty..."
