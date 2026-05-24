@@ -265,6 +265,21 @@ mkdir -p "$HOME/.claude"
 link_file "$DOTFILES/claude/settings.json" "$HOME/.claude/settings.json"
 link_file "$DOTFILES/claude/CLAUDE.md" "$HOME/.claude/CLAUDE.md"
 link_file "$DOTFILES/claude/statusline.sh" "$HOME/.claude/statusline.sh"
+link_file "$DOTFILES/claude/subagent-strategy.md" "$HOME/.claude/subagent-strategy.md"
+
+# Claude skills, agents, commands, rules, scripts — link each file individually
+# so ~/.claude can still contain non-dotfiles content alongside them
+for dir in skills agents commands rules scripts; do
+  mkdir -p "$HOME/.claude/$dir"
+  if [[ -d "$DOTFILES/claude/$dir" ]]; then
+    find "$DOTFILES/claude/$dir" -type f | while read -r src; do
+      rel="${src#$DOTFILES/claude/$dir/}"
+      dst="$HOME/.claude/$dir/$rel"
+      mkdir -p "$(dirname "$dst")"
+      link_file "$src" "$dst"
+    done
+  fi
+done
 
 mkdir -p "$HOME/.config/yazi"
 link_file "$DOTFILES/yazi/keymap.toml" "$HOME/.config/yazi/keymap.toml"

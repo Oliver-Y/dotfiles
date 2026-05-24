@@ -7,11 +7,45 @@
       "Bash(npm:*)",
       "Bash(npx:*)",
       "Bash(tmux:*)"
+    ],
+    "deny": [
+      "Bash(aws s3 rm*)",
+      "Bash(aws s3 sync*)",
+      "Bash(aws s3 mv*)"
     ]
   },
-  "model": "opus",
+  "model": "sonnet",
+  "hooks": {
+    "PreCompact": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bash ~/.claude/scripts/precompact-hook.sh"
+          }
+        ]
+      }
+    ],
+    "Notification": [
+      {
+        "matcher": "idle_prompt",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "printf '\\a'"
+          }
+        ]
+      }
+    ]
+  },
   "statusLine": {
     "type": "command",
-    "command": "$HOME/.claude/statusline.sh"
-  }
+    "command": "/Users/OliverY/.claude/statusline.sh"
+  },
+  "enabledPlugins": {
+    "clangd-lsp@claude-plugins-official": true
+  },
+  "effortLevel": "medium",
+  "theme": "dark"
 }
