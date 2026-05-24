@@ -48,15 +48,58 @@ fi
 
 # --- Core packages ---
 echo "==> Installing core packages..."
-PACKAGES=(bash zsh tmux fzf zoxide git curl jq yazi fd ripgrep)
+# fd and yazi handled per-platform below
+PACKAGES=(bash zsh tmux fzf zoxide git curl jq ripgrep)
 for pkg in "${PACKAGES[@]}"; do
   if ! command -v "$pkg" &>/dev/null; then
     echo "    Installing $pkg..."
-    install_pkg "$pkg"
+    install_pkg "$pkg" || echo "    WARNING: $pkg install failed, continuing"
   else
     echo "    $pkg already installed"
   fi
 done
+
+# fd: on apt it's fd-find (binary fdfind); on brew/dnf/pacman it's fd
+if ! command -v fd &>/dev/null; then
+  if command -v apt-get &>/dev/null; then
+    echo "    Installing fd-find (apt)..."
+    sudo apt-get install -y fd-find || true
+    mkdir -p "$HOME/.local/bin"
+    if [[ -x /usr/bin/fdfind && ! -e "$HOME/.local/bin/fd" ]]; then
+      ln -sf /usr/bin/fdfind "$HOME/.local/bin/fd"
+      echo "    Symlinked fdfind -> ~/.local/bin/fd"
+    fi
+  else
+    install_pkg fd || true
+  fi
+else
+  echo "    fd already installed"
+fi
+
+# yazi: brew has it; apt/dnf/pacman generally don't — install via cargo
+if ! command -v yazi &>/dev/null; then
+  if command -v brew &>/dev/null; then
+    install_pkg yazi || true
+  else
+    echo "==> Installing yazi via cargo..."
+    if ! command -v cargo &>/dev/null; then
+      echo "    Installing rustup (will install cargo)..."
+      curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh -s -- -y --default-toolchain stable --no-modify-path
+      # shellcheck disable=SC1091
+      source "$HOME/.cargo/env"
+    fi
+    cargo install --force yazi-build || echo "    WARNING: yazi cargo install failed"
+    # Symlink into ~/.local/bin since that's already on PATH per .zshrc
+    mkdir -p "$HOME/.local/bin"
+    for bin in yazi ya; do
+      if [[ -x "$HOME/.cargo/bin/$bin" && ! -e "$HOME/.local/bin/$bin" ]]; then
+        ln -sf "$HOME/.cargo/bin/$bin" "$HOME/.local/bin/$bin"
+      fi
+    done
+  fi
+else
+  echo "    yazi already installed"
+fi
 
 # Yazi dependencies (macOS only)
 if [[ "$OS" == "Darwin" ]]; then
@@ -98,6 +141,25 @@ echo "==> Installing Ghostty..."
 if ! command -v ghostty &>/dev/null && [[ ! -d "/Applications/Ghostty.app" ]]; then
   if [[ "$OS" == "Darwin" ]]; then
     install_cask ghostty
+  elif command -v apt-get &>/dev/null; then
+    # Use community-maintained .deb builds (mkasberg/ghostty-ubuntu)
+    UBUNTU_VER="$(. /etc/os-release && echo "${VERSION_ID:-24.04}")"
+    ARCH="$(dpkg --print-architecture 2>/dev/null || echo amd64)"
+    # Resolve latest tag via redirect (no GitHub API → no rate-limit)
+    LATEST_URL="$(curl -sIL -o /dev/null -w '%{url_effective}' https://github.com/mkasberg/ghostty-ubuntu/releases/latest)"
+    TAG="${LATEST_URL##*/}"
+    # Tag uses dashes (e.g. "1.3.1-0-ppa2") but filename uses dot before "ppa2" — derive both
+    VER_FILE="${TAG//-ppa/.ppa}"
+    DEB_NAME="ghostty_${VER_FILE}_${ARCH}_${UBUNTU_VER}.deb"
+    DEB_URL="https://github.com/mkasberg/ghostty-ubuntu/releases/download/${TAG}/${DEB_NAME}"
+    TMPDEB="$(mktemp --suffix=.deb)"
+    echo "    Downloading $DEB_URL..."
+    if curl -fsSL -o "$TMPDEB" "$DEB_URL"; then
+      sudo apt-get install -y "$TMPDEB" || sudo dpkg -i "$TMPDEB" || echo "    WARNING: ghostty .deb install failed"
+    else
+      echo "    Could not download Ghostty .deb at $DEB_URL"
+    fi
+    rm -f "$TMPDEB"
   else
     echo "    On Linux, install Ghostty from: https://ghostty.org/download"
     echo "    (available as .deb, Flatpak, or build from source)"
@@ -126,41 +188,46 @@ else
   echo "    MesloLGS NF already installed"
 fi
 
-# --- Oh My Zsh ---
-echo "==> Installing Oh My Zsh..."
-if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
-  RUNZSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
-else
-  echo "    Oh My Zsh already installed"
-fi
-
-# --- Powerlevel10k ---
-echo "==> Installing Powerlevel10k..."
-P10K_DIR="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"
-if [[ ! -d "$P10K_DIR" ]]; then
-  git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$P10K_DIR"
-else
-  echo "    Powerlevel10k already installed"
-fi
-
-# --- Zsh plugins ---
-echo "==> Installing zsh plugins..."
-ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
-declare -A ZSH_PLUGINS=(
-  [zsh-autosuggestions]="https://github.com/zsh-users/zsh-autosuggestions"
-  [zsh-syntax-highlighting]="https://github.com/zsh-users/zsh-syntax-highlighting"
-  [zsh-history-substring-search]="https://github.com/zsh-users/zsh-history-substring-search"
-  [fzf-zsh-plugin]="https://github.com/unixorn/fzf-zsh-plugin"
-)
-for plugin in "${!ZSH_PLUGINS[@]}"; do
-  dest="$ZSH_CUSTOM/plugins/$plugin"
-  if [[ ! -d "$dest" ]]; then
-    echo "    Cloning $plugin..."
-    git clone --depth=1 "${ZSH_PLUGINS[$plugin]}" "$dest"
+# --- Oh My Zsh (skip when zsh isn't installed — bash-only setups still work) ---
+if command -v zsh &>/dev/null; then
+  echo "==> Installing Oh My Zsh..."
+  if [[ ! -d "$HOME/.oh-my-zsh" ]]; then
+    RUNZSH=no CHSH=no sh -c "$(curl -fsSL https://raw.githubusercontent.com/ohmyzsh/ohmyzsh/master/tools/install.sh)"
   else
-    echo "    $plugin already installed"
+    echo "    Oh My Zsh already installed"
   fi
-done
+else
+  echo "==> Skipping Oh My Zsh (zsh not installed)"
+fi
+
+# --- Powerlevel10k + zsh plugins (zsh-only) ---
+if command -v zsh &>/dev/null && [[ -d "$HOME/.oh-my-zsh" ]]; then
+  echo "==> Installing Powerlevel10k..."
+  P10K_DIR="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}/themes/powerlevel10k"
+  if [[ ! -d "$P10K_DIR" ]]; then
+    git clone --depth=1 https://github.com/romkatv/powerlevel10k.git "$P10K_DIR"
+  else
+    echo "    Powerlevel10k already installed"
+  fi
+
+  echo "==> Installing zsh plugins..."
+  ZSH_CUSTOM="${ZSH_CUSTOM:-$HOME/.oh-my-zsh/custom}"
+  declare -A ZSH_PLUGINS=(
+    [zsh-autosuggestions]="https://github.com/zsh-users/zsh-autosuggestions"
+    [zsh-syntax-highlighting]="https://github.com/zsh-users/zsh-syntax-highlighting"
+    [zsh-history-substring-search]="https://github.com/zsh-users/zsh-history-substring-search"
+    [fzf-zsh-plugin]="https://github.com/unixorn/fzf-zsh-plugin"
+  )
+  for plugin in "${!ZSH_PLUGINS[@]}"; do
+    dest="$ZSH_CUSTOM/plugins/$plugin"
+    if [[ ! -d "$dest" ]]; then
+      echo "    Cloning $plugin..."
+      git clone --depth=1 "${ZSH_PLUGINS[$plugin]}" "$dest"
+    else
+      echo "    $plugin already installed"
+    fi
+  done
+fi
 
 # --- TPM (Tmux Plugin Manager) ---
 echo "==> Installing TPM..."
@@ -184,8 +251,11 @@ link_file() {
   echo "    Linked $src -> $dst"
 }
 
-link_file "$DOTFILES/zsh/.zshrc"    "$HOME/.zshrc"
-link_file "$DOTFILES/zsh/.p10k.zsh" "$HOME/.p10k.zsh"
+if command -v zsh &>/dev/null; then
+  link_file "$DOTFILES/zsh/.zshrc"    "$HOME/.zshrc"
+  link_file "$DOTFILES/zsh/.p10k.zsh" "$HOME/.p10k.zsh"
+fi
+link_file "$DOTFILES/bash/.bash_aliases" "$HOME/.bash_aliases"
 link_file "$DOTFILES/tmux/.tmux.conf" "$HOME/.tmux.conf"
 
 mkdir -p "$HOME/.config/ghostty"

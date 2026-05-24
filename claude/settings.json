@@ -12,6 +12,6 @@
   "model": "opus",
   "statusLine": {
     "type": "command",
-    "command": "/Users/OliverY/.claude/statusline.sh"
+    "command": "$HOME/.claude/statusline.sh"
   }
 }
